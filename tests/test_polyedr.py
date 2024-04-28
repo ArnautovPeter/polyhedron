@@ -50,7 +50,7 @@ class TestPolyedr(unittest.TestCase):
         pl = polyedr.get_projection_len()
         self.assertAlmostEqual(pl, 0)
 
-    # Одна грань полностью затеняется другой, все ребра нижней
+    # Одна грань полностью затеняется другой. Все ребра нижней грани
     # удовлетворяют условиям, длина всех нижних ребер равна 2
     def test_sum_projection_len_03(self):
         polyedr = Polyedr('data/two_squares2.geom')
@@ -62,3 +62,10 @@ class TestPolyedr(unittest.TestCase):
         polyedr = Polyedr('data/two_squares3.geom')
         pl = polyedr.get_projection_len()
         self.assertAlmostEqual(pl, 0)
+
+    # Одна грань полностью затеняется другой. Два ребра нижней грани
+    # удовлетворяют условиям, длина всех нижних ребер равна 2
+    def test_sum_projection_len_05(self):
+        polyedr = Polyedr('data/two_squares4.geom')
+        pl = polyedr.get_projection_len()
+        self.assertAlmostEqual(pl, 4)
