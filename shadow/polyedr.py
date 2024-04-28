@@ -216,5 +216,5 @@ class Polyedr:
             angle_check = e.correct_angle()
             if e.gaps == [] and center_check and angle_check:
                 projection_len += e.projection_len() / self.c
-        print("Сумма длинн проекций, удовлетворяющих " +
+        print("Сумма длин проекций, удовлетворяющих " +
               f"условиям: {projection_len}")
