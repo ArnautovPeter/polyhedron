@@ -112,3 +112,40 @@ class TestVoid(unittest.TestCase):
         s.shadow(f)
         self.assertEqual(len(s.gaps), 1)
         self.assertEqual(SegmentApproxMatcher(s.gaps[0]), Segment(0.0, 1.0))
+
+    # Грань не затеняет ребро, не лежащее под ней
+    def test_shadow_09(self):
+        s = Edge(R3(-5.0, 1.0, 1.0), R3(-10.0, 0.0, -1.0))
+        f = Facet([R3(0.0, 0.0, 0.0), R3(1.0, 0.0, 0.0),
+                   R3(1.0, 1.0, 0.0), R3(0.0, 1.0, 0.0)])
+        s.shadow(f)
+        self.assertEqual(len(s.gaps), 1)
+        self.assertEqual(SegmentApproxMatcher(s.gaps[0]), Segment(0.0, 1))
+
+    # Тесты дополнительных методов
+    # Центр ребра лежит строго в кубе единичного объема с центром в
+    # начале координат и ребрами, параллельными осям координат
+    def test_center_not_in_cube_01(self):
+        s = Edge(R3(-0.2, 0.0, 0.0), R3(0.2, 0.0, 0.0))
+        self.assertEqual(s.center_not_in_cube(), False)
+
+    # Центр ребра лежит строго вне куба
+    def test_center_not_in_cube_02(self):
+        s = Edge(R3(-0.2, 0.0, 0.0), R3(10, 0.0, 0.0))
+        self.assertEqual(s.center_not_in_cube(), True)
+
+    # Центр ребра лежит на грани куба
+    def test_center_not_in_cube_03(self):
+        s = Edge(R3(-1, 0.0, 0.5), R3(1, 0.0, 0.5))
+        self.assertEqual(s.center_not_in_cube(), False)
+
+    # Ребро образует с горизонатльной плоскостью угол Pi/4 > Pi/7, значит
+    # оно нам не подходит
+    def test_angle_01(self):
+        s = Edge(R3(0.0, 0.0, 0.0,), R3(1.0, 1.0, 1.0))
+        self.assertEqual(s.correct_angle(), False)
+
+    # Ребро образует с горизонатльной плоскостью угол 0 < Pi/7, значит
+    # оно нам подходит
+        s = Edge(R3(0.0, 0.0, 0.0,), R3(1.0, 1.0, 0.0))
+        self.assertEqual(s.correct_angle(), True)

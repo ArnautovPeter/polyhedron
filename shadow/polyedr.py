@@ -1,4 +1,5 @@
-from math import pi
+from math import pi, sqrt
+import math
 from functools import reduce
 from operator import add
 from common.r3 import R3
@@ -60,14 +61,11 @@ class Edge:
                 facet.vertexes[0], facet.h_normal()))
         if shade.is_degenerate():
             return
+
         # Преобразование списка «просветов», если тень невырождена
         gaps = [s.subtraction(shade) for s in self.gaps]
         self.gaps = [
             s for s in reduce(add, gaps, []) if not s.is_degenerate()]
-
-    # Преобразование одномерных координат в трёхмерные
-    def r3(self, t):
-        return self.beg * (Edge.SFIN - t) + self.fin * t
 
     # Пересечение ребра с полупространством, задаваемым точкой (a)
     # на плоскости и вектором внешней нормали (n) к ней
@@ -80,6 +78,39 @@ class Edge:
         x = - f0 / (f1 - f0)
         return Segment(Edge.SBEG, x) if f0 < 0.0 else Segment(x, Edge.SFIN)
 
+    # Преобразование одномерных координат в трёхмерные
+    def r3(self, t):
+        return self.beg * (Edge.SFIN - t) + self.fin * t
+
+    # Проверка того, что центр не лежит в кубе
+    def center_not_in_cube(self, c=1):
+        center_point = R3((self.beg.x + self.fin.x) / 2 / c,
+                          (self.beg.y + self.fin.y) / 2 / c,
+                          (self.beg.z + self.fin.z) / 2 / c)
+        if -0.5 <= center_point.x <= 0.5:
+            if -0.5 <= center_point.y <= 0.5:
+                if -0.5 <= center_point.z <= 0.5:
+                    return False
+        return True
+
+    # Проверка угла между ребром и горизонтальной плоскостью
+    def correct_angle(self):
+        bound_cos = math.cos(math.pi / 7)
+        bound_cos *= bound_cos
+        xlen = self.fin.x - self.beg.x
+        ylen = self.fin.y - self.beg.y
+        zlen = self.fin.z - self.beg.z
+        bound_cos *= (xlen ** 2 + ylen ** 2 + zlen ** 2) * \
+                     (xlen ** 2 + ylen ** 2)
+        cos = (xlen ** 2 + ylen ** 2) ** 2
+        return bound_cos <= cos
+
+    # Длинна проекции
+    def projection_len(self):
+        len = sqrt((self.fin.x - self.beg.x) ** 2 +
+                   (self.fin.y - self.beg.y) ** 2)
+        return len
+
 
 class Facet:
     """ Грань полиэдра """
@@ -87,6 +118,7 @@ class Facet:
 
     def __init__(self, vertexes):
         self.vertexes = vertexes
+        self.edges = []
 
     # «Вертикальна» ли грань?
     def is_vertical(self):
@@ -94,8 +126,7 @@ class Facet:
 
     # Нормаль к «горизонтальному» полупространству
     def h_normal(self):
-        n = (
-            self.vertexes[1] - self.vertexes[0]).cross(
+        n = (self.vertexes[1] - self.vertexes[0]).cross(
             self.vertexes[2] - self.vertexes[0])
         return n * (-1.0) if n.dot(Polyedr.V) < 0.0 else n
 
@@ -135,7 +166,7 @@ class Polyedr:
                     # обрабатываем первую строку; buf - вспомогательный массив
                     buf = line.split()
                     # коэффициент гомотетии
-                    c = float(buf.pop(0))
+                    self.c = float(buf.pop(0))
                     # углы Эйлера, определяющие вращение
                     alpha, beta, gamma = (float(x) * pi / 180.0 for x in buf)
                 elif i == 1:
@@ -145,7 +176,7 @@ class Polyedr:
                     # задание всех вершин полиэдра
                     x, y, z = (float(x) for x in line.split())
                     self.vertexes.append(R3(x, y, z).rz(
-                        alpha).ry(beta).rz(gamma) * c)
+                        alpha).ry(beta).rz(gamma) * self.c)
                 else:
                     # вспомогательный массив
                     buf = line.split()
@@ -153,17 +184,37 @@ class Polyedr:
                     size = int(buf.pop(0))
                     # массив вершин этой грани
                     vertexes = list(self.vertexes[int(n) - 1] for n in buf)
+                    # задание самой грани
+                    self.facets.append(Facet(vertexes))
                     # задание рёбер грани
                     for n in range(size):
                         self.edges.append(Edge(vertexes[n - 1], vertexes[n]))
-                    # задание самой грани
-                    self.facets.append(Facet(vertexes))
+                        self.facets[-1].edges.append(self.edges[-1])
+
+    # Метод, возвращающий сумму длин ребер, удовлетворяющих условиям
+    def get_projection_len(self):
+        projection_len = 0
+        for e in self.edges:
+            for f in self.facets:
+                e.shadow(f)
+            center_check = e.center_not_in_cube(self.c)
+            angle_check = e.correct_angle()
+            if e.gaps == [] and center_check and angle_check:
+                projection_len += e.projection_len() / self.c
+        return projection_len
 
     # Метод изображения полиэдра
     def draw(self, tk):  # pragma: no cover
         tk.clean()
+        projection_len = 0
         for e in self.edges:
             for f in self.facets:
                 e.shadow(f)
             for s in e.gaps:
                 tk.draw_line(e.r3(s.beg), e.r3(s.fin))
+            center_check = e.center_not_in_cube(self.c)
+            angle_check = e.correct_angle()
+            if e.gaps == [] and center_check and angle_check:
+                projection_len += e.projection_len() / self.c
+        print("Сумма длинн проекций, удовлетворяющих " +
+              f"условиям: {projection_len}")

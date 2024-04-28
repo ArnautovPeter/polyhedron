@@ -1,6 +1,5 @@
 import unittest
 from unittest.mock import patch, mock_open
-
 from shadow.polyedr import Polyedr
 
 
@@ -36,3 +35,30 @@ class TestPolyedr(unittest.TestCase):
 
     def test_num_edges(self):
         self.assertEqual(len(self.polyedr.edges), 16)
+
+    # У фигура с 1 гранью нет затененных, а значит и
+    # удовлетворяющих условиям ребер нет
+    def test_sum_porjecion_len_01(self):
+        polyedr = Polyedr('data/square.geom')
+        pl = polyedr.get_projection_len()
+        self.assertEqual(pl, 0)
+
+    # Одна грань полностью затеняется другой, но все ребра нижней
+    # грани не удовлетворяют условиям
+    def test_sum_projection_len_02(self):
+        polyedr = Polyedr('data/two_squares1.geom')
+        pl = polyedr.get_projection_len()
+        self.assertAlmostEqual(pl, 0)
+
+    # Одна грань полностью затеняется другой, все ребра нижней
+    # удовлетворяют условиям, длина всех нижних ребер равна 2
+    def test_sum_projection_len_03(self):
+        polyedr = Polyedr('data/two_squares2.geom')
+        pl = polyedr.get_projection_len()
+        self.assertAlmostEqual(pl, 8)
+
+    # Одна грань полностью затеняется 2 ребра другой, но не полностью
+    def test_sum_projection_len_04(self):
+        polyedr = Polyedr('data/two_squares3.geom')
+        pl = polyedr.get_projection_len()
+        self.assertAlmostEqual(pl, 0)
